@@ -1,0 +1,106 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SportType {
+  FUTSAL
+  BADMINTON
+  BASKET
+  VOLI
+  OTHER
+}
+
+// Enums legacy (tidak dipakai di model baru, disimpan jika masih dibutuhkan di masa depan)
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  REFUNDED
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  password  String
+  phone     String?
+  role      Role      @default(USER)
+
+  bookings  Booking[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Court {
+  id           Int        @id @default(autoincrement())
+  name         String
+  location     String
+  sportType    SportType
+  pricePerHour Decimal    @db.Decimal(10, 2)
+  description  String?
+  imageUrl     String?
+  facilities   String?
+  isActive     Boolean    @default(true)
+
+  bookings     Booking[]
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Booking {
+  id            Int       @id @default(autoincrement())
+  user          User      @relation(fields: [userId], references: [id])
+  userId        Int
+  court         Court     @relation(fields: [courtId], references: [id])
+  courtId       Int
+  startTime     DateTime
+  endTime       DateTime
+  status        String    @default("PENDING") // PENDING, PAID, CANCELLED, EXPIRED
+  totalPrice    Int
+  midtransOrderId String?  @unique
+  paymentStatus   String   @default("PENDING") // PENDING, PAID, EXPIRED, CANCELLED, FAILED
+  teamName      String?
+  findOpponent  Boolean   @default(false)
+  payment       Payment?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([courtId, startTime, endTime])
+}
+
+model Payment {
+  id                Int       @id @default(autoincrement())
+  booking           Booking   @relation(fields: [bookingId], references: [id])
+  bookingId         Int       @unique
+  midtransOrderId   String    @unique
+  grossAmount       Int
+  transactionStatus String
+  paymentType       String?
+  transactionTime   DateTime?
+  fraudStatus       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
